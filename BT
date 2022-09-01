@@ -1,0 +1,266 @@
+deleteall;
+###########################################################################################
+## variables
+## n_sub : refractive index of the substrate and the spacer
+## t_sub: substrate thckness (considered as infinity and it should passe the FDTD zone)
+## t_spacer: spacer thickness
+## t_mirroir_Al: thickness of the Al mirror
+## n_mirroir_Al:refractive index of the mirror
+## n_structure : refractive index of the structure
+## t_structure : structure thickness 
+## L_structure : structure side length
+## px : periodicity along x-direction which represent also the distance between 2 bowties namely Bowtie and Bowtie_1
+## xi,yi while i goes from 1 to 3 point coordinates in order to define each triangle
+## bowtie g gap between the 2 tip-to-tip triangle
+## angle_1: 180 in order to generate the second triangle and to form one bowtie
+###################################
+## I automatize all the geometrical, parameters and to categorize each structure as groups
+### First group "MIM" containing the sub, the mirror and the spacer
+addrect; #spacer
+select("rectangle");
+set("name","spacer");
+# Definition of dimensions
+set("z min",-t_spacer);
+set("z max",0);
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",20e-6); 
+set("x",0); #structure invariant de translation suivant x
+set("x span",20e-6); 
+# material
+set("override mesh order from material database",3);
+set("mesh order",2);
+#set("material","<Object defined dielectric>");
+set("material",n_spacer);
+#addtogroup("Total structure");
+unselectall;
+#################################
+addrect; #mirroir
+select("rectangle");
+set("name","mirroir");
+# Definition of dimensions 
+set("z min",-t_mirroir_Al);
+set("z max",-t_spacer);
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",20e-6); 
+set("x",0); #structure invariant de translation suivant x
+set("x span",20e-6); 
+# Material
+set("override mesh order from material database",3);
+set("mesh order",2);
+set("material",n_mirroir_Al);
+#addtogroup("Total structure");
+unselectall;
+##############################
+#addrect; #substrat
+#select("rectangle");
+#set("name","substrat");
+# Definition of dimensions 
+#set("z min",-(t_sub+t_spacer+t_mirroir_Al));
+#set("z max",-(t_spacer+t_mirroir_Al));
+#set("y",0); 
+#set("y span",20e-6); 
+#set("x",0); #
+#set("x span",20e-6); 
+# Material
+#set("override mesh order from material database",3);
+#set("mesh order",2);
+#set("material","<Object defined dielectric>");
+#set("material",n_spacer);
+#set("index",n_sub);
+#addtogroup("Total structure");
+#unselectall;
+
+#addrect; #nkmaterial
+#select("rectangle");
+#set("name","nkmaterial");
+# Definition of dimensions 
+#set("z min",t_structure);
+#set("z max",10e-6);
+#set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+#set("y span",20e-6); 
+#set("x",0); #structure invariant de translation suivant x
+#set("x span",20e-6); 
+# Material
+#set("override mesh order from material database",3);
+#set("mesh order",3);
+#set("material",nkmaterial);
+#unselectall;
+
+
+#################################
+addstructuregroup;
+set("name","MIM");
+#select("substrat");
+#addtogroup("MIM");
+#unselectall;
+select("mirroir");
+addtogroup("MIM");
+unselectall;
+select("spacer");
+addtogroup("MIM");
+unselectall;
+####################################################################
+## Second group is #Bowtie# one it is well defined we can just copy it 
+#and shift it towards the desired position aiming to generate the seconde Bowtie named "Bowtie_1"
+addstructuregroup;
+set("name","Bowtie");
+vtx=[(x1)*1e-6,(y1)*1e-6;(x2)*1e-6,(y2)*1e-6;(x3)*1e-6,(y3)*1e-6];
+addpoly;
+set("vertices",vtx);
+set("name","Al");
+set("material",n_structure);
+set("z min",0);
+set("z max",t_structure);
+set("y",0); 
+set("x",0);
+# Attribution d'un materiau
+set("override mesh order from material database",3);
+set("mesh order",1);
+
+######Generating the second triangle in order to form a Bowtie named "Bowtie"######
+select("Al");
+copy(0);
+set("name","Al_1"); 
+set("first axis",4 );
+set("rotation 1",angle1);
+## Its center should be distant from the centre of the first triangle as its 
+set("y",(y1*2*1e-6)-g);
+unselectall;
+#########
+select("Al");
+addtogroup("Bowtie");
+unselectall;
+select("Al_1");
+addtogroup("Bowtie");
+unselectall;
+#########Generating the seconde bowtie named "Bowtie_1" as the corner-corner distance is equal to px
+#select("Bowtie");
+#copy(0);
+#set("name","Bowtie_1"); 
+#set("x",0.32*1e-6);
+##### Its center should be distant from the centre of the first bowtie as its y= (L_structure+px)
+#unselectall;
+
+#######To note it is important to define the centre of the simulation region so we can center there 
+#the FDTD zone, the source and the R monitor
+## It is important to define the center of the image 
+# zone FDTD
+addfdtd;
+# Define general properties
+set("dimension","3D");
+set("simulation time",6000e-15);
+set("dt stability factor",0.99);
+# define its geometry
+set("z min",-5.5e-6);
+set("z max",5.5e-6);
+set("y",y1*1e-6 -0.5*g); #ycenter
+set("y span", 2*L_structure*sin(pi/3) + dr + g); 
+set("x",0);
+set("x span",(L_structure + g));# periodicity
+# define the mesh settings
+set("mesh accuracy",2);
+set("mesh refinement","conformal variant 1");#instead of staircase
+# define the boundary conditions
+set("Allow symmetry on all boundaries",1);
+set("x min bc","Symmetric");
+set("x max bc","Symmetric"); 
+set("y min bc","Anti-symmetric");
+set("y max bc","Anti-symmetric");
+set("z min bc","PML");
+set("z max bc","PML");
+set("use early shutoff",1);
+set("auto shutoff min", 1e-7);
+######################################
+# mesh override
+addmesh;
+set("dx",0.005e-6);
+set("dy",0.005e-6);
+set("dz",0.005e-6);
+### define its geometry
+select("mesh");
+set("x",0);
+set("y",y1*1e-6 - 0.5*g); #y center
+set("x span",0.25*L_structure*sin(pi/3));
+set("y span", 0.5*L_structure*sin(pi/3));
+set("z min",-0.01e-6); 
+set("z max",0.075e-6); 
+
+
+###############################################
+# source
+addplane;
+set("injection axis","z-axis");
+set("direction","backward");
+# define its geometry
+set("z",1.3e-6);
+#set("x",0.5*(L_structure + px)); #x center
+set("x",0);
+set("y",y1*1e-6 - 0.5*g); #y center
+set("y span", 3*L_structure*sin(pi/3) + 4e-6 + g);
+set("x span",3.5*(L_structure + g));# deborde de la FDTD periodicity
+set("polarization angle",90);# source polarisation
+# define the spectral range
+set("wavelength start",0.4e-6);
+set("wavelength stop",11e-6);
+###############################################
+# add monitors
+
+#addtime; # field time monitor
+#set("name","field time");
+#set("x",0.1e-6);
+#set("y",0.1e-6);
+#set("z",-0.1e-6);
+
+
+addpower; # frequency domain field and power monitor Reflexion
+set("name","R");
+set("override global monitor settings",1);
+#set("use source limits",1);
+set("use source limits",0);
+set("minimum wavelength",1e-6);
+set("maximum wavelength",10e-6);
+set("use wavelength spacing",1);
+set("frequency points",500);
+# definir la geometrie
+set("monitor type","2D z-normal");
+set("x",0);
+set("y",y1*1e-6 - 0.5*g); #y center
+set("y span",4*(L_structure + g));
+set("y span", 3*L_structure*sin(pi/3) + 3.5e-6 + g);
+set("x span",3*(L_structure + g));
+set("z",2.5e-6);
+##################################
+
+
+
+### Field is collected in the center of the bowtie so it has its own center 
+## to be define in the middle of the gap region
+#addprofile;
+#set("name","E_field");
+#set("monitor type","2D z-normal");
+#set("override global monitor settings",1);
+##set("use source limits",1);
+#set("use source limits",0);
+#set("minimum wavelength",1e-6);
+#set("maximum wavelength",10e-6);
+#set("frequency points",500);
+#set("y",y1*1e-6 - 0.5*g); #y center
+#set("y span",2*L_structure*sin(pi/3) + 0.075e-6 + g);
+#set("x",0); #x center of the gap region i.e center of the bowtie 
+#set("x span",L_structure+0.075e-6);
+#set("z",t_structure/2);
+
+
+#addprofile;
+#set("name","E_field_x");
+#set("monitor type","2D x-normal");
+#set("override global monitor settings",1);
+#set("use source limits",0);
+#set("minimum wavelength",0.4e-6);
+#set("maximum wavelength",10e-6);
+#set("frequency points",100);
+#set("y",y1*1e-6 - 0.5*g); #y center
+#set("y span",0.2e-6);
+#set("z",0); #x center of the gap region i.e center of the bowtie 
+#set("z span",0.1e-6);
+#set("z",t_structure/2);
