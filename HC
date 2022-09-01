@@ -1,0 +1,241 @@
+deleteall;
+###########################################################################################
+#########################Define the substrate then the Al generation as an etch material
+#Define ech0, ech60 and etch120 stucture groups using the periodicity in 0, 60 and 120 angles directions. using a loop spanning from -p_Al/2 to +p_Al/2
+#copy the etch0 structure then apply a rotation of 60, and 120 degrees on each copy along z-axis
+
+## variables
+## n_substrat : refractive index
+## t_substrat : substrate thickness
+## t_Al : Aluminium thickness 
+## x_sub_Al : sub and Al length in x direction
+## y_sub_Al : sub and Al length in y direction
+## p_Al : periodicity in 0, 60, 120 angles directions 
+## w_Al : width in 0, 60, 120 angles directions 
+
+###################################
+addstructuregroup;
+set("name","Total structure");
+
+#addrect; #substrat
+#select("rectangle");
+#set("name","substrat");
+# Definition des dimensions geometriques
+#set("z min",-t_sub);
+#set("z max",0);
+#set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+#set("y span",y_sub_Al); 
+#set("x",0); #structure invariant de translation suivant x 
+#set("x span",x_sub_Al); 
+# Material
+#set("override mesh order from material database",3);
+#set("mesh order",3);
+#set("material","<Object defined dielectric>");
+#set("material",n_substrat);
+#set("index",n_sub);
+#addtogroup("Total structure");
+#unselectall;
+#################################
+#################################
+addrect; #Al
+select("rectangle");
+set("name","Al");
+# Definition des dimensions geometriques
+set("z min",0);
+set("z max",t_Al);
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",y_sub_Al); 
+set("x",0); #structure invariant de translation suivant x 
+set("x span",x_sub_Al);
+# Material
+set("override mesh order from material database",2);
+set("mesh order",2);
+set("material",n_Al);
+# set("index",n_Al);
+addtogroup("Total structure");
+unselectall;
+##################################
+#addstructuregroup;
+#set("name","Etch structure");
+
+addstructuregroup;
+set("name","etch0");
+
+###################################
+for (i=-2*p_Al:p_Al:2*p_Al)# generate the periodicity along y centered at 0 important for the rotation of the other structures
+{
+addrect; #etch
+select("rectangle");
+set("name","etch");
+set("y",i); 
+
+# Definition des dimensions geometriques
+set("x",0); #structure invariant de translation suivant x 
+set("x span",x_sub_Al); 
+set("y span",w_Al); 
+set("z min",0);
+set("z max",t_Al);
+
+# Attribution d'un materiau
+set("override mesh order from material database",1);
+set("mesh order",2);
+set("material",etch);
+addtogroup("etch0");
+#addtogroup("Etch structure");
+unselectall;
+}
+#################################
+select("etch0");
+copy(0);
+set("name","ech60"); 
+set("first axis",4 );
+set("rotation 1",angle_1);
+#addtogroup("Etch structure");
+unselectall;
+#############
+select("etch0");
+copy(0);
+set("name","ech120");
+set("first axis", 4);
+set("rotation 1",angle_2);
+#addtogroup("Etch structure");
+unselectall;
+#########################
+addrect; #spacer
+select("rectangle");
+set("name","spacer");
+# Definition des dimensions geometriques
+set("z min",-t_spacer);
+set("z max",0);
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",50e-6); 
+set("x",0); #structure invariant de translation suivant x
+set("x span",50e-6); 
+# Material
+set("override mesh order from material database",3);
+set("mesh order",2);
+set("material",n_sub);
+addtogroup("Total structure");
+unselectall;
+#################################
+addrect; #mirroir
+select("rectangle");
+set("name","mirroir");
+# Definition of dimensions
+set("z min",-(t_spacer+t_mirroir_Al));
+set("z max",-t_spacer);
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",50e-6); 
+set("x",0); #structure invariant de translation suivant x
+set("x span",50e-6); 
+# Material
+set("override mesh order from material database",3);
+set("mesh order",2);
+set("material",n_mirroir_Al);
+addtogroup("Total structure");
+unselectall;
+##############################
+addrect; #substrat
+select("rectangle");
+set("name","substrat");
+# Definition of dimensions
+set("z min",-(t_sub +t_spacer+t_mirroir_Al));
+set("z max",-(t_spacer+t_mirroir_Al));
+set("y",0); #dimension suivant y = 1, mais sera limitee par la zone FDTD
+set("y span",50e-6); 
+set("x",0); #structure invariant de translation suivant x
+set("x span",50e-6); 
+# Material
+set("override mesh order from material database",3);
+set("mesh order",2);
+set("material",n_sub);
+addtogroup("Total structure");
+unselectall;
+#################################
+
+##########Define FDTD zone, mesh override, source, monitors ##################
+
+###################################
+# zone FDTD
+addfdtd;
+# definir les proprietes generales
+set("dimension","3D");
+set("simulation time",6000e-15);
+# define its geometry
+set("z min",-5e-6);
+set("z max",5.5e-6);
+set("y",0);
+set("y span",2*p_Al);# periodicity 
+set("x",0);
+set("x span",(2*p_Al)*(tan(pi/6)));# periodicity
+# definir les mesh settings
+set("mesh accuracy",2);
+set("mesh refinement","conformal variant 1");#instead of staircase
+# define the boundary conditions
+set("Allow symmetry on all boundaries",1);
+set("x min bc","anti-symmetric");
+set("x max bc","anti-symmetric");
+set("y min bc","symmetric");
+set("y max bc","symmetric");
+set("z min bc","PML");
+set("z max bc","PML");
+set("use early shutoff",1);
+set("auto shutoff min", 1e-7);
+
+######################################
+# mesh override
+addmesh;
+set("dx",0.002e-6);
+set("dy",0.002e-6);
+set("dz",0.002e-6);
+# define its geometry
+select("mesh");
+set("x",0); 
+set("x span",0.75*p_Al);
+set("x span",0.75*p_Al);
+set("y",0);
+set("y span",0.75*p_Al); 
+set("z min",-0.01e-6); 
+set("z max",0.075e-6);
+
+###############################################
+# source
+addplane;
+set("injection axis","z-axis");
+set("direction","backward");
+# define its geometry
+set("z",1.3e-6);
+set("y",0);
+set("y span",2.5*(2*p_Al));# periodicity 
+set("x",0);
+set("x span",2.5*((2*p_Al)*(tan(pi/6))));# periodicity
+set("polarization angle",0);#source polarisation
+# define the spectral range
+set("wavelength start",0.7e-6);
+set("wavelength stop",10e-6);
+###############################################
+
+addpower; # frequency domain field and power monitor Reflexion
+set("name","R");
+set("override global monitor settings",1);
+set("use source limits",1);
+set("use wavelength spacing",1);
+set("frequency points",500);
+# define its geometry
+set("monitor type","2D z-normal");
+set("y",0);
+set("y span",2*(2*p_Al));# periodicity 
+set("x",0);
+set("x span",2*((2*p_Al)*(tan(pi/6))));# periodicity
+set("z",2.5e-6);
+##################################
+addprofile;
+set("name","E_field_profile");
+set("monitor type","2D z-normal");
+set("override global monitor settings",1);
+set("use source limits",0);
+set("frequency points",500);
+set("y",0);
+set("y span",0.75*p_Al);
+set("x",0);
+set("x span",0.75*p_Al);
